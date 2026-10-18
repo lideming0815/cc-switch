@@ -216,6 +216,44 @@ fn schema_migration_rejects_future_version() {
 }
 
 #[test]
+fn schema_migration_v20_adds_disabled_deepseek_harness_skills() {
+    let conn = Connection::open_in_memory().expect("open memory db");
+    conn.execute_batch(
+        "CREATE TABLE skills (
+            id TEXT PRIMARY KEY,
+            enabled_codex BOOLEAN NOT NULL DEFAULT 0
+        );
+        INSERT INTO skills (id, enabled_codex) VALUES ('existing', 1);
+        PRAGMA user_version = 20;",
+    )
+    .expect("seed v20 skills");
+
+    Database::apply_schema_migrations_on_conn(&conn).expect("migrate v20 skills");
+    Database::apply_schema_migrations_on_conn(&conn).expect("migration is idempotent");
+
+    let enabled: (bool, bool) = conn
+        .query_row(
+            "SELECT enabled_codex, enabled_deepseek_harness FROM skills WHERE id = 'existing'",
+            [],
+            |row| Ok((row.get(0)?, row.get(1)?)),
+        )
+        .expect("read migrated skill flags");
+    assert_eq!(enabled, (true, false));
+    let column = get_column_info(&conn, "skills", "enabled_deepseek_harness");
+    assert_eq!(column.r#type, "BOOLEAN");
+    assert_eq!(column.notnull, 1);
+    assert_eq!(normalize_default(&column.default).as_deref(), Some("0"));
+    assert_eq!(Database::get_user_version(&conn).unwrap(), SCHEMA_VERSION);
+}
+
+#[test]
+fn schema_create_tables_includes_deepseek_harness_skills() {
+    let conn = Connection::open_in_memory().expect("open memory db");
+    Database::create_tables_on_conn(&conn).expect("create tables");
+    assert!(Database::has_column(&conn, "skills", "enabled_deepseek_harness").unwrap());
+}
+
+#[test]
 fn schema_migration_adds_missing_columns_for_providers() {
     let conn = Connection::open_in_memory().expect("open memory db");
 

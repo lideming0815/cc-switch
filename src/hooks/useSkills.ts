@@ -15,6 +15,7 @@ import {
   type SkillUpdateInfo,
   type SkillsShSearchResult,
 } from "@/lib/api/skills";
+import type { SkillTarget } from "@/lib/api/skills";
 import type { AppId } from "@/lib/api/types";
 import { mergeImportedSkills } from "@/hooks/useSkills.helpers";
 import { readLocalCache, writeLocalCache } from "@/lib/localCache";
@@ -112,7 +113,7 @@ export function useInstallSkill() {
       currentApp,
     }: {
       skill: DiscoverableSkill;
-      currentApp: AppId;
+      currentApp: SkillTarget;
     }) => skillsApi.installUnified(skill, currentApp),
     onSuccess: (installedSkill) => {
       queryClient.setQueryData<InstalledSkill[]>(
@@ -178,7 +179,7 @@ export function useRestoreSkillBackup() {
       currentApp,
     }: {
       backupId: string;
-      currentApp: AppId;
+      currentApp: SkillTarget;
     }) => skillsApi.restoreBackup(backupId, currentApp),
     onSettled: () =>
       Promise.all([
@@ -200,7 +201,7 @@ export function useToggleSkillApp() {
       enabled,
     }: {
       id: string;
-      app: AppId;
+      app: SkillTarget;
       enabled: boolean;
     }) => skillsApi.toggleApp(id, app, enabled),
     // 乐观更新：点了格子立刻翻过来，不等写完再刷新；失败时回滚
@@ -242,7 +243,7 @@ export function useBulkToggleSkillApp() {
       enabled,
     }: {
       ids: string[];
-      app: AppId;
+      app: SkillTarget;
       enabled: boolean;
     }) =>
       runSequentialBulkAction(ids, (id) =>
@@ -354,7 +355,7 @@ export function useInstallSkillsFromZip() {
       currentApp,
     }: {
       filePath: string;
-      currentApp: AppId;
+      currentApp: SkillTarget;
     }) => skillsApi.installFromZip(filePath, currentApp),
     onSuccess: (result) => {
       queryClient.setQueryData<InstalledSkill[]>(
@@ -451,6 +452,7 @@ export type {
   SkillUpdateInfo,
   SkillsShSearchResult,
   AppId,
+  SkillTarget,
 };
 
 /**

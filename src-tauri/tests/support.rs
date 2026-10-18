@@ -23,6 +23,7 @@ pub fn ensure_test_home() -> &'static Path {
         // Windows 上 `dirs::home_dir()` 不受 HOME/USERPROFILE 影响（走 Known Folder API），
         // 用 CC_SWITCH_TEST_HOME 显式覆盖，以确保测试不会污染真实用户目录。
         std::env::set_var("CC_SWITCH_TEST_HOME", &base);
+        std::env::set_var("DSH_HOME", base.join(".dsh"));
         std::env::set_var("HOME", &base);
         #[cfg(windows)]
         std::env::set_var("USERPROFILE", &base);
@@ -47,6 +48,7 @@ pub fn reset_test_fs() {
         ".grok",
         ".config",
         ".openclaw",
+        ".dsh",
         "profiles",
     ] {
         let path = home.join(sub);

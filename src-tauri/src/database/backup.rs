@@ -1693,6 +1693,68 @@ mod tests {
 
     #[test]
     #[serial]
+    fn deepseek_harness_skill_flags_survive_export_and_sync_import() -> Result<(), AppError> {
+        let _test_home = TestHomeGuard::new();
+        let source = Database::memory()?;
+        {
+            let conn = crate::database::lock_conn!(source.conn);
+            conn.execute(
+                "INSERT INTO skills (id, name, directory, enabled_codex, enabled_deepseek_harness)
+                 VALUES ('harness-skill', 'Harness skill', 'harness-skill', 1, 1)",
+                [],
+            )?;
+        }
+
+        for for_sync in [false, true] {
+            let sql = if for_sync {
+                source.export_sql_string_for_sync()?
+            } else {
+                source.export_sql_string()?
+            };
+            let target = Database::memory()?;
+            if for_sync {
+                target.import_sql_string_for_sync(&sql)?;
+            } else {
+                target.import_sql_string(&sql)?;
+            }
+            let skill = target.get_installed_skill("harness-skill")?.unwrap();
+            assert!(skill.apps.codex);
+            assert_eq!(
+                serde_json::to_value(&skill.apps).unwrap()["deepseek-harness"],
+                true
+            );
+        }
+        Ok(())
+    }
+
+    #[test]
+    #[serial]
+    fn import_v20_skills_defaults_deepseek_harness_to_disabled() -> Result<(), AppError> {
+        let _test_home = TestHomeGuard::new();
+        let source = Database::memory()?;
+        {
+            let conn = crate::database::lock_conn!(source.conn);
+            conn.execute_batch(
+                "ALTER TABLE skills DROP COLUMN enabled_deepseek_harness;
+                 INSERT INTO skills (id, name, directory, enabled_codex)
+                 VALUES ('existing-skill', 'Existing skill', 'existing-skill', 1);
+                 PRAGMA user_version = 20;",
+            )?;
+        }
+        let target = Database::memory()?;
+        target.import_sql_string(&source.export_sql_string()?)?;
+
+        let skill = target.get_installed_skill("existing-skill")?.unwrap();
+        assert!(skill.apps.codex);
+        assert_eq!(
+            serde_json::to_value(&skill.apps).unwrap()["deepseek-harness"],
+            false
+        );
+        Ok(())
+    }
+
+    #[test]
+    #[serial]
     fn dump_sql_batches_rows_into_multi_row_inserts() -> Result<(), AppError> {
         let _test_home = TestHomeGuard::new();
         // 每行一条 INSERT 是导入慢的根源（恢复侧逐条解析，2 万行实测 21s）。

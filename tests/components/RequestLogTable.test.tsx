@@ -6,6 +6,7 @@ import {
   appShortName,
   formatHitPercent,
   formatLogTime,
+  isKnownAppId,
 } from "@/components/usage/RequestLogTable";
 import { REQUEST_LOG_COLUMNS } from "@/components/usage/requestLogColumns";
 import type { UsageRangeSelection } from "@/types/usage";
@@ -32,6 +33,12 @@ vi.mock("@/lib/query/usage", () => ({
 }));
 
 describe("RequestLogTable", () => {
+  it("does not classify a Skills-only target as a request-log application", () => {
+    expect(isKnownAppId("codex")).toBe(true);
+    expect(isKnownAppId("deepseek-harness")).toBe(false);
+    expect(appShortName("deepseek-harness")).toBe("deepseek-harness");
+  });
+
   beforeEach(() => {
     useRequestLogsMock.mockReset();
     useRequestLogsMock.mockImplementation(

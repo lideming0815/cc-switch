@@ -210,7 +210,7 @@ describe("UnifiedSkillsPanel", () => {
   it("always shows the Pi column and toggles it like the other apps", async () => {
     m.installed = [makeSkill({ apps: { claude: true, pi: true } })];
     renderPanel();
-    expect(columns()).toHaveLength(3);
+    expect(columns()).toHaveLength(4);
     // Pi 列头的说明走 HoverTip（悬停即显），不再用原生 title
     expect(columns()[2]).not.toHaveAttribute("title");
     await userEvent.hover(columns()[2]);
@@ -235,7 +235,53 @@ describe("UnifiedSkillsPanel", () => {
     m.visibleApps = ["claude", "codex"];
     m.installed = [makeSkill()];
     renderPanel();
-    expect(columns()).toHaveLength(2);
+    expect(columns()).toHaveLength(3);
+  });
+
+  it.each([false, true])(
+    "always shows DeepSeek Harness and independently toggles its state (enabled=%s)",
+    async (enabled) => {
+      m.visibleApps = [];
+      m.installed = [makeSkill({ apps: { "deepseek-harness": enabled } })];
+      renderPanel();
+
+      expect(columns()).toHaveLength(1);
+      expect(columns()[0].closest("[data-column]")).toHaveAttribute(
+        "data-column",
+        "deepseek-harness",
+      );
+      const cell = screen.getByRole("button", { name: /appMatrix.cell/ });
+      expect(cell).toHaveAttribute("aria-pressed", String(enabled));
+      await userEvent.click(cell);
+      await waitFor(() =>
+        expect(m.toggle).toHaveBeenCalledWith({
+          id: "owner/repo:alpha-skill",
+          app: "deepseek-harness",
+          enabled: !enabled,
+        }),
+      );
+    },
+  );
+
+  it("bulk-enables the DeepSeek Harness column", async () => {
+    m.visibleApps = [];
+    m.installed = [
+      makeSkill({ id: "enabled", apps: { "deepseek-harness": true } }),
+      makeSkill({ id: "disabled" }),
+    ];
+    renderPanel();
+    await userEvent.click(columns()[0]);
+    expect(screen.getByText("DeepSeek Harness")).toBeInTheDocument();
+    await userEvent.click(
+      screen.getByRole("button", { name: "appMatrix.pop.enableRest" }),
+    );
+    await waitFor(() =>
+      expect(m.bulkToggle).toHaveBeenCalledWith({
+        ids: ["disabled"],
+        app: "deepseek-harness",
+        enabled: true,
+      }),
+    );
   });
 
   it("distinguishes an empty list from a search miss", async () => {
@@ -897,6 +943,7 @@ describe("UnifiedSkillsPanel", () => {
           hermes: false,
           pi: false,
           mcode: false,
+          "deepseek-harness": false,
         },
       },
     ]);

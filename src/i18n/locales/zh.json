@@ -3418,7 +3418,7 @@
       "locationUnified": "通用目录",
       "openFolder": "打开",
       "openFolderAria": "打开 {{path}}",
-      "unifiedWarning": "Codex、Gemini CLI、OpenCode 等会直接读这个目录，各应用的开关对它们不再完全生效。",
+      "unifiedWarning": "Codex、Gemini CLI、OpenCode、DeepSeek Harness 等会直接读这个目录，各应用的开关对它们不再完全生效。",
       "move": "移动并切换",
       "moving": "正在移动…",
       "moveConfirmTitle": "把 {{count}} 个 Skill 移到 {{path}}？",

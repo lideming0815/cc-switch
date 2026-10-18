@@ -2,17 +2,8 @@ import { invoke } from "@tauri-apps/api/core";
 
 import type { AppId } from "@/lib/api/types";
 
-export type AppType =
-  | "claude"
-  | "claude-desktop"
-  | "codex"
-  | "gemini"
-  | "grokbuild"
-  | "opencode"
-  | "openclaw"
-  | "hermes"
-  | "pi"
-  | "mcode";
+export type SkillTarget = AppId | "deepseek-harness";
+export type AppType = SkillTarget;
 
 /** Skill 应用启用状态 */
 export interface SkillApps {
@@ -26,6 +17,7 @@ export interface SkillApps {
   hermes: boolean;
   pi: boolean;
   mcode?: boolean;
+  "deepseek-harness"?: boolean;
 }
 
 /** 已安装的 Skill（v3.10.0+ 统一结构） */
@@ -206,7 +198,7 @@ export const skillsApi = {
   /** 安装 Skill（统一安装） */
   async installUnified(
     skill: DiscoverableSkill,
-    currentApp: AppId,
+    currentApp: SkillTarget,
   ): Promise<InstalledSkill> {
     return await invoke("install_skill_unified", { skill, currentApp });
   },
@@ -219,13 +211,17 @@ export const skillsApi = {
   /** 从备份恢复 Skill */
   async restoreBackup(
     backupId: string,
-    currentApp: AppId,
+    currentApp: SkillTarget,
   ): Promise<InstalledSkill> {
     return await invoke("restore_skill_backup", { backupId, currentApp });
   },
 
   /** 切换 Skill 的应用启用状态 */
-  async toggleApp(id: string, app: AppId, enabled: boolean): Promise<boolean> {
+  async toggleApp(
+    id: string,
+    app: SkillTarget,
+    enabled: boolean,
+  ): Promise<boolean> {
     return await invoke("toggle_skill_app", { id, app, enabled });
   },
 
@@ -343,7 +339,7 @@ export const skillsApi = {
   /** 从 ZIP 文件安装 Skills */
   async installFromZip(
     filePath: string,
-    currentApp: AppId,
+    currentApp: SkillTarget,
   ): Promise<ZipInstallResult> {
     return await invoke("install_skills_from_zip", { filePath, currentApp });
   },

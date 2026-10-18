@@ -3418,7 +3418,7 @@
       "locationUnified": "Shared folder",
       "openFolder": "Open",
       "openFolderAria": "Open {{path}}",
-      "unifiedWarning": "Codex, Gemini CLI, OpenCode and others read this folder directly, so the per-app switches no longer fully apply to them.",
+      "unifiedWarning": "Codex, Gemini CLI, OpenCode, DeepSeek Harness and others read this folder directly, so the per-app switches no longer fully apply to them.",
       "move": "Move and switch",
       "moving": "Moving…",
       "moveConfirmTitle": "Move {{count}} Skills to {{path}}?",

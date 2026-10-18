@@ -48,8 +48,8 @@ import {
   useUninstallSkill,
   useUpdateSkill,
 } from "@/hooks/useSkills";
-import type { AppId } from "@/lib/api/types";
-import { SKILLS_APP_IDS } from "@/config/appConfig";
+import type { SkillTarget } from "@/lib/api/skills";
+import { SKILLS_APP_IDS, SKILL_TARGET_IDS } from "@/config/appConfig";
 import { settingsApi, skillsApi } from "@/lib/api";
 import { copyText } from "@/lib/clipboard";
 import { extractErrorMessage } from "@/utils/errorUtils";
@@ -77,13 +77,13 @@ import type { ZipSkippedSkill } from "@/lib/api/skills";
 const BACKUP_DIR = "~/.cc-switch/skill-backups";
 
 type SkillsView = "installed" | "discover";
-type StatusFilter = "all" | "updates" | "none" | `app:${AppId}`;
+type StatusFilter = "all" | "updates" | "none" | `app:${SkillTarget}`;
 
 interface WriteFailure {
   desired: boolean;
   error: string;
 }
-const failKey = (id: string, app: AppId) => `${id}\u0000${app}`;
+const failKey = (id: string, app: SkillTarget) => `${id}\u0000${app}`;
 
 type ConfirmState =
   | { kind: "uninstall"; ids: string[] }
@@ -122,7 +122,8 @@ const UnifiedSkillsPanel: React.FC<UnifiedSkillsPanelProps> = ({
   onNavigationBlockedChange,
 }) => {
   const { t, i18n } = useTranslation();
-  const appIds = useVisibleAppIds(SKILLS_APP_IDS);
+  const visibleApps = useVisibleAppIds(SKILLS_APP_IDS);
+  const appIds: SkillTarget[] = [...visibleApps, "deepseek-harness"];
   const { targets, setTargets, installTo } = useSkillInstallTargets(appIds);
 
   const [view, setView] = useState<SkillsView>(initialView);
@@ -249,7 +250,7 @@ const UnifiedSkillsPanel: React.FC<UnifiedSkillsPanelProps> = ({
   };
 
   const listSeparator = t("mcpPage.listSeparator");
-  const names = (apps: AppId[]) =>
+  const names = (apps: SkillTarget[]) =>
     apps.map((app) => APP_DISPLAY_NAME[app]).join(listSeparator);
   const noun = t("skillsPage.noun");
   const installedSkills = skills ?? [];
@@ -305,7 +306,7 @@ const UnifiedSkillsPanel: React.FC<UnifiedSkillsPanelProps> = ({
   }, [installedSkills]);
 
   const enabledCount = (skill: InstalledSkill) =>
-    SKILLS_APP_IDS.filter((app) => skill.apps[app]).length;
+    SKILL_TARGET_IDS.filter((app) => skill.apps[app]).length;
 
   const normalizedQuery = searchQuery.trim().toLocaleLowerCase();
   const filteredSkills = useMemo(() => {
@@ -313,7 +314,7 @@ const UnifiedSkillsPanel: React.FC<UnifiedSkillsPanelProps> = ({
       if (statusFilter === "updates" && !updatesMap[skill.id]) return false;
       if (statusFilter === "none" && enabledCount(skill) > 0) return false;
       if (statusFilter.startsWith("app:")) {
-        const app = statusFilter.slice(4) as AppId;
+        const app = statusFilter.slice(4) as SkillTarget;
         if (!skill.apps[app]) return false;
       }
       if (sourceFilter !== "all" && sourceKey(skill) !== sourceFilter) {
@@ -394,7 +395,7 @@ const UnifiedSkillsPanel: React.FC<UnifiedSkillsPanelProps> = ({
   // ─── 写入与失败记录 ────────────────────────────────────────────────
   const recordResult = (
     id: string,
-    app: AppId,
+    app: SkillTarget,
     desired: boolean,
     error?: unknown,
   ) =>
@@ -407,14 +408,14 @@ const UnifiedSkillsPanel: React.FC<UnifiedSkillsPanelProps> = ({
     });
 
   const recordEnableFailures = (
-    failures: Array<{ id: string; app: AppId; error: unknown }>,
+    failures: Array<{ id: string; app: SkillTarget; error: unknown }>,
   ) => {
     for (const failure of failures) {
       recordResult(failure.id, failure.app, true, failure.error);
     }
   };
 
-  const writeOne = async (id: string, app: AppId, enabled: boolean) => {
+  const writeOne = async (id: string, app: SkillTarget, enabled: boolean) => {
     if (!beginWrite()) return;
     try {
       await toggleAppMutation.mutateAsync({ id, app, enabled });
@@ -426,7 +427,11 @@ const UnifiedSkillsPanel: React.FC<UnifiedSkillsPanelProps> = ({
     }
   };
 
-  const writeMany = async (ids: string[], app: AppId, enabled: boolean) => {
+  const writeMany = async (
+    ids: string[],
+    app: SkillTarget,
+    enabled: boolean,
+  ) => {
     if (ids.length === 0) return { succeeded: [] as string[], failed: 0 };
     try {
       const result = await bulkToggleAppMutation.mutateAsync({
@@ -447,7 +452,7 @@ const UnifiedSkillsPanel: React.FC<UnifiedSkillsPanelProps> = ({
 
   const bulkToggle = async (
     ids: string[],
-    app: AppId,
+    app: SkillTarget,
     enabled: boolean,
     toastKey: { on: string; off: string },
   ) => {
@@ -492,7 +497,7 @@ const UnifiedSkillsPanel: React.FC<UnifiedSkillsPanelProps> = ({
     }
   };
 
-  const handleColumnBulk = (app: AppId, enabled: boolean) => {
+  const handleColumnBulk = (app: SkillTarget, enabled: boolean) => {
     const ids = scope.rows
       .filter((skill) => Boolean(skill.apps[app]) !== enabled)
       .map((skill) => skill.id);
@@ -503,7 +508,7 @@ const UnifiedSkillsPanel: React.FC<UnifiedSkillsPanelProps> = ({
     });
   };
 
-  const handleSelectionToggle = (app: AppId, enabled: boolean) => {
+  const handleSelectionToggle = (app: SkillTarget, enabled: boolean) => {
     const chosen = installedSkills.filter((skill) => selected.has(skill.id));
     const ids = chosen
       .filter((skill) => Boolean(skill.apps[app]) !== enabled)
@@ -686,7 +691,7 @@ const UnifiedSkillsPanel: React.FC<UnifiedSkillsPanelProps> = ({
   };
 
   const reportEnableFailures = (
-    failures: Array<{ id: string; app: AppId; error: unknown }>,
+    failures: Array<{ id: string; app: SkillTarget; error: unknown }>,
   ) => {
     if (failures.length === 0) return;
     recordEnableFailures(failures);
@@ -1049,7 +1054,7 @@ const UnifiedSkillsPanel: React.FC<UnifiedSkillsPanelProps> = ({
     if (value === "none") return t("skillsPage.filter.none");
     if (value.startsWith("app:"))
       return t("skillsPage.filter.inApp", {
-        app: APP_DISPLAY_NAME[value.slice(4) as AppId],
+        app: APP_DISPLAY_NAME[value.slice(4) as SkillTarget],
       });
     return t("skillsPage.filter.all");
   };
@@ -1762,7 +1767,7 @@ UnifiedSkillsPanel.displayName = "UnifiedSkillsPanel";
 interface InstalledRowProps {
   skill: InstalledSkill;
   first: boolean;
-  appIds: AppId[];
+  appIds: SkillTarget[];
   checked: boolean;
   hasUpdate: boolean;
   isUpdating: boolean;
@@ -1771,7 +1776,7 @@ interface InstalledRowProps {
   disabled: boolean;
   sourceText: string;
   onPick: (checked: boolean) => void;
-  onCell: (app: AppId) => void;
+  onCell: (app: SkillTarget) => void;
   onOpenSource: () => void;
   onFixSync: () => void;
   onUpdate: () => void;
@@ -1801,7 +1806,7 @@ function InstalledRow({
   onUninstall,
 }: InstalledRowProps) {
   const { t } = useTranslation();
-  const enabled = SKILLS_APP_IDS.some((app) => skill.apps[app]);
+  const enabled = SKILL_TARGET_IDS.some((app) => skill.apps[app]);
   const showDir =
     skill.directory &&
     skill.directory.trim().toLowerCase() !== skill.name.trim().toLowerCase();
@@ -2043,9 +2048,9 @@ function AppMenuButton({
 }: {
   label: string;
   ariaLabel: string;
-  apps: AppId[];
+  apps: SkillTarget[];
   disabled: boolean;
-  onPick: (app: AppId) => void;
+  onPick: (app: SkillTarget) => void;
 }) {
   return (
     <DropdownMenu>

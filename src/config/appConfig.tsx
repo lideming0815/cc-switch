@@ -1,5 +1,6 @@
 import React from "react";
 import type { AppId } from "@/lib/api/types";
+import type { SkillTarget } from "@/lib/api/skills";
 import type { VisibleApps } from "@/types";
 import {
   ClaudeIcon,
@@ -52,6 +53,12 @@ export const SKILLS_APP_IDS: AppId[] = [
   "hermes",
   "pi",
   "mcode",
+];
+
+/** Skills-only targets do not add provider or MCP integrations. */
+export const SKILL_TARGET_IDS: SkillTarget[] = [
+  ...SKILLS_APP_IDS,
+  "deepseek-harness",
 ];
 
 export type ProxyAppId = Extract<

@@ -4,26 +4,26 @@ import { Button } from "@/components/ui/button";
 import { HelpTip } from "@/components/ui/help-tip";
 import { DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { AppGlyph, APP_DISPLAY_NAME } from "@/components/shell/AppGlyph";
-import type { AppId } from "@/lib/api/types";
+import type { SkillTarget } from "@/lib/api/skills";
 import type { ImportSkillSelection, UnmanagedSkill } from "@/lib/api/skills";
-import { SKILLS_APP_IDS } from "@/config/appConfig";
+import { SKILL_TARGET_IDS } from "@/config/appConfig";
 import { cn } from "@/lib/utils";
 import { MatrixSearch } from "@/components/mcp/AppMatrix";
 import { CHECKBOX_CLASS, V7Dialog } from "@/components/mcp/formBits";
 
 /** Pi 的启用状态由 ~/.pi/agent/skills 里有没有这个目录决定，导入时不勾选 */
-const IMPORT_APP_IDS = SKILLS_APP_IDS.filter((app) => app !== "pi");
+const IMPORT_APP_IDS = SKILL_TARGET_IDS.filter((app) => app !== "pi");
 
 interface SkillImportDialogProps {
   skills: UnmanagedSkill[];
-  visibleAppIds: AppId[];
+  visibleAppIds: SkillTarget[];
   isImporting: boolean;
   onImport: (imports: ImportSkillSelection[]) => void;
   onClose: () => void;
 }
 
-const isAppId = (value: string): value is AppId =>
-  (SKILLS_APP_IDS as string[]).includes(value);
+const isSkillTarget = (value: string): value is SkillTarget =>
+  (SKILL_TARGET_IDS as string[]).includes(value);
 
 /** 「导入本机已有…」（宽 560）：选目录 + 选导入后在哪些应用启用。 */
 export function SkillImportDialog({
@@ -43,18 +43,20 @@ export function SkillImportDialog({
   );
   // 默认勾「发现于」里出现过的应用
   const defaultApps = useMemo(() => {
-    const set = new Set<AppId>();
+    const set = new Set<SkillTarget>();
     for (const skill of skills) {
       for (const found of skill.foundIn) {
-        if (isAppId(found) && found !== "pi") set.add(found);
+        if (isSkillTarget(found) && found !== "pi") set.add(found);
       }
     }
     return set;
   }, [skills]);
-  const [apps, setApps] = useState<Set<AppId>>(() => new Set(defaultApps));
+  const [apps, setApps] = useState<Set<SkillTarget>>(
+    () => new Set(defaultApps),
+  );
 
   const foundLabel = (found: string) => {
-    if (isAppId(found)) return APP_DISPLAY_NAME[found];
+    if (isSkillTarget(found)) return APP_DISPLAY_NAME[found];
     if (found === "agents") return "~/.agents/skills";
     if (found === "cc-switch") return t("skillsPage.import.foundCcSwitch");
     return found;
@@ -84,9 +86,9 @@ export function SkillImportDialog({
       skills
         .filter((skill) => selected.has(skill.directory))
         .map((skill) => {
-          const chosen = new Set<AppId>(extra);
+          const chosen = new Set<SkillTarget>(extra);
           for (const found of skill.foundIn) {
-            if (isAppId(found) && apps.has(found)) chosen.add(found);
+            if (isSkillTarget(found) && apps.has(found)) chosen.add(found);
           }
           return {
             directory: skill.directory,
@@ -100,6 +102,7 @@ export function SkillImportDialog({
               hermes: chosen.has("hermes"),
               pi: false,
               mcode: chosen.has("mcode"),
+              "deepseek-harness": chosen.has("deepseek-harness"),
             },
           };
         }),

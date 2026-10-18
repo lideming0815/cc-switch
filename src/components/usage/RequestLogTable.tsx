@@ -5,6 +5,7 @@ import { TablePagination } from "./TablePagination";
 import { HelpTip } from "@/components/ui/help-tip";
 import { AppGlyph, APP_DISPLAY_NAME } from "@/components/shell/AppGlyph";
 import type { AppId } from "@/lib/api";
+import { APP_IDS } from "@/config/appConfig";
 import {
   CACHE_INCLUSIVE_APP_TYPES,
   getFreshInputTokens,
@@ -80,7 +81,7 @@ export function formatLogFullTime(createdAt: number): string {
 }
 
 export function isKnownAppId(appType: string): appType is AppId {
-  return appType in APP_DISPLAY_NAME;
+  return APP_IDS.includes(appType as AppId);
 }
 
 export function appDisplayName(appType: string): string {

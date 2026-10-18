@@ -26,7 +26,7 @@ import {
   useSearchSkillsSh,
   useSkillRepos,
 } from "@/hooks/useSkills";
-import type { AppId } from "@/lib/api/types";
+import type { SkillTarget } from "@/lib/api/skills";
 import type {
   DiscoverableSkill,
   InstalledSkill,
@@ -34,7 +34,7 @@ import type {
   SkillRepoFailure,
   SkillsShDiscoverableSkill,
 } from "@/lib/api/skills";
-import { SKILLS_APP_IDS } from "@/config/appConfig";
+import { SKILL_TARGET_IDS } from "@/config/appConfig";
 import {
   formatSkillError,
   skillErrorReason,
@@ -50,11 +50,11 @@ const ROW_HEIGHT = 56;
 export type SkillsPageSource = "repos" | "skillssh";
 
 type InstallRunner = <T extends { id: string }>(
-  install: (firstApp: AppId) => Promise<T[]>,
-  apps?: AppId[],
+  install: (firstApp: SkillTarget) => Promise<T[]>,
+  apps?: SkillTarget[],
 ) => Promise<{
   installed: T[];
-  failures: Array<{ id: string; app: AppId; error: unknown }>;
+  failures: Array<{ id: string; app: SkillTarget; error: unknown }>;
 }>;
 
 const SKILLSSH_PAGE_SIZE = 20;
@@ -110,16 +110,16 @@ interface SkillsPageProps {
    * 传入的内容放在页签行右侧（安装到、搜索）。
    */
   renderViewTabs: (trailing: React.ReactNode) => React.ReactNode;
-  visibleAppIds: AppId[];
-  installTargets: AppId[];
-  onInstallTargetsChange: (apps: AppId[]) => void;
+  visibleAppIds: SkillTarget[];
+  installTargets: SkillTarget[];
+  onInstallTargetsChange: (apps: SkillTarget[]) => void;
   installTo: InstallRunner;
   /** 「已安装 · 3 个应用 ›」：切到已安装段并定位到那一行 */
   onShowInstalled: (skillId: string) => void;
   onOpenRepoManager: () => void;
   /** 安装后有应用没能启用：交给已安装段标 ⚠ */
   onEnableFailures: (
-    failures: Array<{ id: string; app: AppId; error: unknown }>,
+    failures: Array<{ id: string; app: SkillTarget; error: unknown }>,
   ) => void;
   initialQuery?: string;
 }
@@ -263,7 +263,7 @@ export function SkillsPage({
   }, [installedSkills]);
 
   const enabledAppCount = (skill: InstalledSkill) =>
-    SKILLS_APP_IDS.filter((app) => skill.apps[app]).length;
+    SKILL_TARGET_IDS.filter((app) => skill.apps[app]).length;
 
   const sourceLabel = (skill: InstalledSkill) =>
     skill.repoOwner && skill.repoName
@@ -349,7 +349,7 @@ export function SkillsPage({
   });
 
   // ─── 安装 ───────────────────────────────────────────────────────────
-  const names = (apps: AppId[]) =>
+  const names = (apps: SkillTarget[]) =>
     apps.map((app) => APP_DISPLAY_NAME[app]).join(t("mcpPage.listSeparator"));
 
   const handleInstall = async (row: DiscoverRow) => {
@@ -847,12 +847,12 @@ function InstallToPopover({
 }: {
   label: string;
   fullLabel: string;
-  visibleAppIds: AppId[];
-  targets: AppId[];
-  onChange: (apps: AppId[]) => void;
+  visibleAppIds: SkillTarget[];
+  targets: SkillTarget[];
+  onChange: (apps: SkillTarget[]) => void;
 }) {
   const { t } = useTranslation();
-  const apps = SKILLS_APP_IDS.filter((app) => visibleAppIds.includes(app));
+  const apps = SKILL_TARGET_IDS.filter((app) => visibleAppIds.includes(app));
   return (
     <PopoverPrimitive.Root>
       <PopoverPrimitive.Trigger asChild>

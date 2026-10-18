@@ -101,6 +101,90 @@ impl McpApps {
     }
 }
 
+/// Skills targets are independent of provider and MCP application support.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum SkillTarget {
+    Claude,
+    #[serde(rename = "claude-desktop")]
+    ClaudeDesktop,
+    Codex,
+    Gemini,
+    GrokBuild,
+    OpenCode,
+    OpenClaw,
+    Hermes,
+    Pi,
+    Mcode,
+    #[serde(rename = "deepseek-harness")]
+    DeepSeekHarness,
+}
+
+impl SkillTarget {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Self::Claude => "claude",
+            Self::ClaudeDesktop => "claude-desktop",
+            Self::Codex => "codex",
+            Self::Gemini => "gemini",
+            Self::GrokBuild => "grokbuild",
+            Self::OpenCode => "opencode",
+            Self::OpenClaw => "openclaw",
+            Self::Hermes => "hermes",
+            Self::Pi => "pi",
+            Self::Mcode => "mcode",
+            Self::DeepSeekHarness => "deepseek-harness",
+        }
+    }
+
+    pub fn all() -> impl Iterator<Item = Self> {
+        AppType::all()
+            .map(Self::from)
+            .chain(std::iter::once(Self::DeepSeekHarness))
+    }
+}
+
+impl From<&AppType> for SkillTarget {
+    fn from(app: &AppType) -> Self {
+        match app {
+            AppType::Claude => Self::Claude,
+            AppType::ClaudeDesktop => Self::ClaudeDesktop,
+            AppType::Codex => Self::Codex,
+            AppType::Gemini => Self::Gemini,
+            AppType::GrokBuild => Self::GrokBuild,
+            AppType::OpenCode => Self::OpenCode,
+            AppType::OpenClaw => Self::OpenClaw,
+            AppType::Hermes => Self::Hermes,
+            AppType::Pi => Self::Pi,
+            AppType::Mcode => Self::Mcode,
+        }
+    }
+}
+
+impl From<AppType> for SkillTarget {
+    fn from(app: AppType) -> Self {
+        Self::from(&app)
+    }
+}
+
+impl From<&SkillTarget> for SkillTarget {
+    fn from(target: &SkillTarget) -> Self {
+        target.clone()
+    }
+}
+
+impl FromStr for SkillTarget {
+    type Err = AppError;
+
+    fn from_str(value: &str) -> Result<Self, Self::Err> {
+        if value.trim().eq_ignore_ascii_case("deepseek-harness") {
+            Ok(Self::DeepSeekHarness)
+        } else {
+            AppType::from_str(value).map(Self::from)
+        }
+    }
+}
+
 /// Skill 应用启用状态（标记 Skill 应用到哪些客户端）
 #[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq)]
 pub struct SkillApps {
@@ -120,67 +204,74 @@ pub struct SkillApps {
     pub hermes: bool,
     #[serde(default)]
     pub pi: bool,
+    #[serde(default, rename = "deepseek-harness")]
+    pub deepseek_harness: bool,
 }
 
 impl SkillApps {
     /// 检查指定应用是否启用
-    pub fn is_enabled_for(&self, app: &AppType) -> bool {
-        match app {
-            AppType::Claude => self.claude,
-            AppType::Codex => self.codex,
-            AppType::Gemini => self.gemini,
-            AppType::GrokBuild => self.grokbuild,
-            AppType::OpenCode => self.opencode,
-            AppType::Hermes => self.hermes,
-            AppType::Pi => self.pi,
-            AppType::Mcode => self.mcode,
-            AppType::OpenClaw => false, // OpenClaw doesn't support Skills
-            AppType::ClaudeDesktop => false,
+    pub fn is_enabled_for(&self, app: impl Into<SkillTarget>) -> bool {
+        match app.into() {
+            SkillTarget::Claude => self.claude,
+            SkillTarget::Codex => self.codex,
+            SkillTarget::Gemini => self.gemini,
+            SkillTarget::GrokBuild => self.grokbuild,
+            SkillTarget::OpenCode => self.opencode,
+            SkillTarget::Hermes => self.hermes,
+            SkillTarget::Pi => self.pi,
+            SkillTarget::Mcode => self.mcode,
+            SkillTarget::DeepSeekHarness => self.deepseek_harness,
+            SkillTarget::OpenClaw => false, // OpenClaw doesn't support Skills
+            SkillTarget::ClaudeDesktop => false,
         }
     }
 
     /// 设置指定应用的启用状态
-    pub fn set_enabled_for(&mut self, app: &AppType, enabled: bool) {
-        match app {
-            AppType::Claude => self.claude = enabled,
-            AppType::Codex => self.codex = enabled,
-            AppType::Gemini => self.gemini = enabled,
-            AppType::GrokBuild => self.grokbuild = enabled,
-            AppType::OpenCode => self.opencode = enabled,
-            AppType::Hermes => self.hermes = enabled,
-            AppType::Pi => self.pi = enabled,
-            AppType::Mcode => self.mcode = enabled,
-            AppType::OpenClaw => {} // OpenClaw doesn't support Skills, ignore
-            AppType::ClaudeDesktop => {} // Claude Desktop 3P profiles don't use CC Switch skill sync
+    pub fn set_enabled_for(&mut self, app: impl Into<SkillTarget>, enabled: bool) {
+        match app.into() {
+            SkillTarget::Claude => self.claude = enabled,
+            SkillTarget::Codex => self.codex = enabled,
+            SkillTarget::Gemini => self.gemini = enabled,
+            SkillTarget::GrokBuild => self.grokbuild = enabled,
+            SkillTarget::OpenCode => self.opencode = enabled,
+            SkillTarget::Hermes => self.hermes = enabled,
+            SkillTarget::Pi => self.pi = enabled,
+            SkillTarget::Mcode => self.mcode = enabled,
+            SkillTarget::DeepSeekHarness => self.deepseek_harness = enabled,
+            SkillTarget::OpenClaw => {} // OpenClaw doesn't support Skills, ignore
+            SkillTarget::ClaudeDesktop => {} // Claude Desktop 3P profiles don't use CC Switch skill sync
         }
     }
 
     /// 获取所有启用的应用列表
-    pub fn enabled_apps(&self) -> Vec<AppType> {
+    pub fn enabled_apps(&self) -> Vec<SkillTarget> {
         let mut apps = Vec::new();
         if self.claude {
-            apps.push(AppType::Claude);
+            apps.push(SkillTarget::Claude);
         }
         if self.codex {
-            apps.push(AppType::Codex);
+            apps.push(SkillTarget::Codex);
         }
         if self.gemini {
-            apps.push(AppType::Gemini);
+            apps.push(SkillTarget::Gemini);
         }
         if self.grokbuild {
-            apps.push(AppType::GrokBuild);
+            apps.push(SkillTarget::GrokBuild);
         }
         if self.opencode {
-            apps.push(AppType::OpenCode);
+            apps.push(SkillTarget::OpenCode);
         }
         if self.mcode {
-            apps.push(AppType::Mcode);
+            apps.push(SkillTarget::Mcode);
         }
         if self.hermes {
-            apps.push(AppType::Hermes);
+            apps.push(SkillTarget::Hermes);
         }
         if self.pi {
-            apps.push(AppType::Pi);
+            apps.push(SkillTarget::Pi);
+        }
+        if self.deepseek_harness {
+            apps.push(SkillTarget::DeepSeekHarness);
         }
         apps
     }
@@ -195,10 +286,11 @@ impl SkillApps {
             && !self.hermes
             && !self.mcode
             && !self.pi
+            && !self.deepseek_harness
     }
 
     /// 仅启用指定应用（其他应用设为禁用）
-    pub fn only(app: &AppType) -> Self {
+    pub fn only(app: impl Into<SkillTarget>) -> Self {
         let mut apps = Self::default();
         apps.set_enabled_for(app, true);
         apps
@@ -206,12 +298,12 @@ impl SkillApps {
 
     /// 从来源标签列表构建启用状态
     ///
-    /// 标签与 AppType::as_str() 一致时启用对应应用，
+    /// 标签与 SkillTarget::as_str() 一致时启用对应应用，
     /// 其他标签（如 "agents", "cc-switch"）忽略。
     pub fn from_labels(labels: &[String]) -> Self {
         let mut apps = Self::default();
         for label in labels {
-            if let Ok(app) = label.parse::<AppType>() {
+            if let Ok(app) = label.parse::<SkillTarget>() {
                 apps.set_enabled_for(&app, true);
             }
         }

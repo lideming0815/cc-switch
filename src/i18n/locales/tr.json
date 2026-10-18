@@ -3360,7 +3360,7 @@
       "locationUnified": "Paylaşılan klasör",
       "openFolder": "Aç",
       "openFolderAria": "{{path}}'yi açın",
-      "unifiedWarning": "Codex, Gemini CLI, OpenCode ve diğerleri bu klasörü doğrudan okur, dolayısıyla uygulama başına anahtarlar artık onlara tam olarak uygulanmaz.",
+      "unifiedWarning": "Codex, Gemini CLI, OpenCode, DeepSeek Harness ve diğerleri bu klasörü doğrudan okur, dolayısıyla uygulama başına anahtarlar artık onlara tam olarak uygulanmaz.",
       "move": "Taşı ve değiştir",
       "moving": "Taşınıyor…",
       "moveConfirmTitle": "{{count}} Becerileri {{path}}'ye taşınsın mı?",

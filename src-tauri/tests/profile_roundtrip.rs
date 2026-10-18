@@ -203,8 +203,13 @@ fn profile_snapshot_apply_roundtrip_restores_configuration() {
     ProviderService::switch(&state, AppType::ClaudeDesktop, "d2").expect("switch desktop to d2");
     McpService::toggle_app(&state, "m1", AppType::Claude, false).expect("disable m1");
     McpService::toggle_app(&state, "m2", AppType::Claude, true).expect("enable m2");
-    SkillService::toggle_app(&state.db, "local:test-skill", &AppType::Claude, false)
-        .expect("disable skill");
+    SkillService::toggle_app(
+        &state.db,
+        "local:test-skill",
+        &(&AppType::Claude).into(),
+        false,
+    )
+    .expect("disable skill");
     PromptService::enable_prompt(&state, AppType::Claude, "pr2").expect("enable pr2");
 
     // ---- 应用项目 A（Claude 组）：只复原 Claude 侧 ----

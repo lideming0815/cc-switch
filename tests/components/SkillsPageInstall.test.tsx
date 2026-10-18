@@ -8,6 +8,7 @@ import type {
   InstalledSkill,
   SkillRepo,
   SkillRepoFailure,
+  SkillTarget,
   SkillsShDiscoverableSkill,
   SkillsShSearchResult,
 } from "@/lib/api/skills";
@@ -203,6 +204,44 @@ describe("SkillsPage (Discover)", () => {
     expect(args.currentApp).toBe("codex");
     expect(args.skill.repoOwner).toBe("owner-b");
     expect(args.skill.name).toBe("Agent Browser B");
+  });
+
+  it("offers DeepSeek Harness as an install target and installs into it", async () => {
+    m.repos = [makeRepo()];
+    m.discoverable = [makeDiscoverable()];
+    const onInstallTargetsChange = vi.fn();
+    renderPage({
+      visibleAppIds: ["claude", "deepseek-harness"],
+      installTargets: ["deepseek-harness"],
+      onInstallTargetsChange,
+      installTo: async <T extends { id: string }>(
+        install: (first: SkillTarget) => Promise<T[]>,
+      ) => ({ installed: await install("deepseek-harness"), failures: [] }),
+    });
+    await userEvent.click(
+      screen.getByRole("button", {
+        name: "skillsPage.installTo.prefixDeepSeek Harness",
+      }),
+    );
+    expect(
+      screen.getByRole("checkbox", { name: "DeepSeek Harness" }),
+    ).toBeChecked();
+    await userEvent.click(
+      screen.getByRole("checkbox", { name: "Claude Code" }),
+    );
+    expect(onInstallTargetsChange).toHaveBeenCalledWith([
+      "deepseek-harness",
+      "claude",
+    ]);
+    await userEvent.keyboard("{Escape}");
+    await userEvent.click(
+      screen.getByRole("button", { name: "skillsPage.discover.installAria" }),
+    );
+    await waitFor(() =>
+      expect(m.install).toHaveBeenCalledWith(
+        expect.objectContaining({ currentApp: "deepseek-harness" }),
+      ),
+    );
   });
 
   it("keeps skills.sh results when the same query is submitted again", async () => {

@@ -23,7 +23,8 @@ impl Database {
             .prepare(
                 "SELECT id, name, description, directory, repo_owner, repo_name, repo_branch,
                         readme_url, enabled_claude, enabled_codex, enabled_gemini, enabled_grokbuild,
-                        enabled_opencode, enabled_hermes, installed_at, content_hash, updated_at, enabled_mcode
+                        enabled_opencode, enabled_hermes, installed_at, content_hash, updated_at, enabled_mcode,
+                        enabled_deepseek_harness
                  FROM skills ORDER BY name ASC",
             )
             .map_err(|e| AppError::Database(e.to_string()))?;
@@ -48,6 +49,7 @@ impl Database {
                         hermes: row.get(13)?,
                         pi: false,
                         mcode: row.get(17)?,
+                        deepseek_harness: row.get(18)?,
                     },
                     installed_at: row.get(14)?,
                     content_hash: row.get(15)?,
@@ -71,7 +73,8 @@ impl Database {
             .prepare(
                 "SELECT id, name, description, directory, repo_owner, repo_name, repo_branch,
                         readme_url, enabled_claude, enabled_codex, enabled_gemini, enabled_grokbuild,
-                        enabled_opencode, enabled_hermes, installed_at, content_hash, updated_at, enabled_mcode
+                        enabled_opencode, enabled_hermes, installed_at, content_hash, updated_at, enabled_mcode,
+                        enabled_deepseek_harness
                  FROM skills WHERE id = ?1",
             )
             .map_err(|e| AppError::Database(e.to_string()))?;
@@ -95,6 +98,7 @@ impl Database {
                     hermes: row.get(13)?,
                     pi: false,
                     mcode: row.get(17)?,
+                    deepseek_harness: row.get(18)?,
                 },
                 installed_at: row.get(14)?,
                 content_hash: row.get(15)?,
@@ -116,8 +120,8 @@ impl Database {
             "INSERT OR REPLACE INTO skills
              (id, name, description, directory, repo_owner, repo_name, repo_branch,
               readme_url, enabled_claude, enabled_codex, enabled_gemini, enabled_grokbuild, enabled_opencode, enabled_hermes,
-              installed_at, content_hash, updated_at, enabled_mcode)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18)",
+              installed_at, content_hash, updated_at, enabled_mcode, enabled_deepseek_harness)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, ?19)",
             params![
                 skill.id,
                 skill.name,
@@ -137,6 +141,7 @@ impl Database {
                 skill.content_hash,
                 skill.updated_at,
                 skill.apps.mcode,
+                skill.apps.deepseek_harness,
             ],
         )
         .map_err(|e| AppError::Database(e.to_string()))?;
@@ -205,8 +210,8 @@ impl Database {
         let conn = lock_conn!(self.conn);
         let affected = conn
             .execute(
-                "UPDATE skills SET enabled_claude = ?1, enabled_codex = ?2, enabled_gemini = ?3, enabled_grokbuild = ?4, enabled_opencode = ?5, enabled_hermes = ?6, enabled_mcode = ?8 WHERE id = ?7",
-                params![apps.claude, apps.codex, apps.gemini, apps.grokbuild, apps.opencode, apps.hermes, id, apps.mcode],
+                "UPDATE skills SET enabled_claude = ?1, enabled_codex = ?2, enabled_gemini = ?3, enabled_grokbuild = ?4, enabled_opencode = ?5, enabled_hermes = ?6, enabled_mcode = ?8, enabled_deepseek_harness = ?9 WHERE id = ?7",
+                params![apps.claude, apps.codex, apps.gemini, apps.grokbuild, apps.opencode, apps.hermes, id, apps.mcode, apps.deepseek_harness],
             )
             .map_err(|e| AppError::Database(e.to_string()))?;
         Ok(affected > 0)
@@ -331,9 +336,51 @@ mod tests {
     }
 
     #[test]
+    fn deepseek_harness_skill_apps_round_trip_and_toggle_independently() {
+        let db = Database::memory().expect("memory db");
+        let apps: SkillApps = serde_json::from_value(serde_json::json!({
+            "codex": true,
+            "mcode": true,
+            "deepseek-harness": true,
+        }))
+        .expect("deserialize skill flags");
+        let installed = skill("owner/repo:harness", "harness", apps);
+        db.save_skill(&installed).expect("save skill");
+
+        let stored = db
+            .get_installed_skill(&installed.id)
+            .expect("query skill")
+            .expect("installed skill");
+        assert_eq!(
+            serde_json::to_value(&stored.apps).unwrap()["deepseek-harness"],
+            true
+        );
+        assert!(stored.apps.codex);
+        assert!(stored.apps.mcode);
+        assert_eq!(
+            db.get_all_installed_skills().unwrap()[&installed.id].apps,
+            stored.apps
+        );
+
+        let mut apps_json = serde_json::to_value(&stored.apps).unwrap();
+        apps_json["deepseek-harness"] = serde_json::Value::Bool(false);
+        let disabled: SkillApps = serde_json::from_value(apps_json).unwrap();
+        assert!(db.update_skill_apps(&installed.id, &disabled).unwrap());
+        let stored = db.get_installed_skill(&installed.id).unwrap().unwrap();
+        assert_eq!(stored.apps, disabled);
+        assert!(stored.apps.codex);
+        assert!(stored.apps.mcode);
+        assert_eq!(
+            serde_json::to_value(&stored.apps).unwrap()["deepseek-harness"],
+            false
+        );
+    }
+
+    #[test]
     fn update_skill_metadata_preserves_enabled_apps() {
         let db = Database::memory().expect("memory db");
-        let installed_apps = SkillApps::only(&AppType::Codex);
+        let mut installed_apps = SkillApps::only(&AppType::Codex);
+        installed_apps.deepseek_harness = true;
         let original = skill("owner/repo:skill", "original", installed_apps.clone());
         db.save_skill(&original).expect("seed skill");
 

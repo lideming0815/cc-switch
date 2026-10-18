@@ -424,7 +424,7 @@ impl ProfileService {
                     ));
                 }
                 for (id, enabled) in toggles {
-                    if let Err(e) = SkillService::toggle_app(&state.db, &id, app, enabled) {
+                    if let Err(e) = SkillService::toggle_app(&state.db, &id, &app.into(), enabled) {
                         warnings.push(format!(
                             "[{app_str}] toggle skill '{id}' -> {enabled} failed: {e}"
                         ));

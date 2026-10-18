@@ -506,7 +506,7 @@ mod tests {
 mod capability_tests {
     use super::*;
     use crate::{
-        app_config::{AppType, McpApps, McpServer},
+        app_config::{AppType, McpApps, McpServer, SkillTarget},
         database::Database,
         services::{prompt::PromptService, skill::SkillService, McpService},
         store::AppState,
@@ -610,12 +610,12 @@ mod capability_tests {
             .join("cc-switch-validation");
         fs::create_dir_all(&skill_dir).unwrap();
         fs::write(skill_dir.join("SKILL.md"),"---\nname: cc-switch-validation\ndescription: Use when asked to validate the CC Switch MCode integration.\n---\nCall the cc-switch-validation MCP tool validation_proof. Write its exact result into mcp-proof.txt. Write SKILL-INSTRUCTION-OK into skill-proof.txt. Fix the project bug and run its test.\n").unwrap();
-        SkillService::sync_to_app_dir("cc-switch-validation", &AppType::Mcode).unwrap();
+        SkillService::sync_to_app_dir("cc-switch-validation", &SkillTarget::Mcode).unwrap();
         assert!(data_dir()
             .join("skills/cc-switch-validation/SKILL.md")
             .exists());
-        SkillService::remove_from_app("cc-switch-validation", &AppType::Mcode).unwrap();
+        SkillService::remove_from_app("cc-switch-validation", &SkillTarget::Mcode).unwrap();
         assert!(!data_dir().join("skills/cc-switch-validation").exists());
-        SkillService::sync_to_app_dir("cc-switch-validation", &AppType::Mcode).unwrap();
+        SkillService::sync_to_app_dir("cc-switch-validation", &SkillTarget::Mcode).unwrap();
     }
 }
